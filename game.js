@@ -24,8 +24,9 @@ let player1 = { x: 100, y: 500, color: 'red' };   // You
 let player2 = { x: 600, y: 500, color: 'blue' };  // Peer
 
 // --- Host/Join Logic ---
-hostBtn.onclick = () => startConnection(true);
-joinBtn.onclick = () => startConnection(false);
+hostBtn.onclick = () => { console.log('Host clicked'); startConnection(true); };
+joinBtn.onclick = () => { console.log('Join clicked'); startConnection(false); };
+
 
 function startConnection(isInitiator) {
   peer = new SimplePeer({ initiator: isInitiator, trickle: false });
