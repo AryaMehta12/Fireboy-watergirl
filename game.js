@@ -1,4 +1,13 @@
+console.log('Script loaded');
+console.log('hostBtn:', document.getElementById('hostBtn'));
+console.log('joinBtn:', document.getElementById('joinBtn'));
+
+
+
+
 // --- Setup ---
+
+
 const socket = new WebSocket('wss://fireboy-watergirl-production.up.railway.app');
 let peer;
 let isConnected = false;
