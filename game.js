@@ -1,7 +1,7 @@
 
 
 // Connect to your deployed signaling server (use wss:// if using HTTPS)
-const socket = new WebSocket('wss://your-app.up.railway.app'); // Replace with your Railway URL
+const socket = new WebSocket('fireboy-watergirl-production.up.railway.app');
 
 let peer;
 let isInitiator = false; // Set this based on whether the player is hosting or joining
