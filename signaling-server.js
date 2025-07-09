@@ -1,5 +1,6 @@
-// Connect to signaling server
-const socket = new WebSocket('ws://localhost:3000'); // Or use a public PeerJS server
+const PORT = process.env.PORT || 3000;
+const WebSocket = require('ws');
+const server = new WebSocket.Server({ port: PORT });
 
 let peer;
 socket.onmessage = (event) => {
