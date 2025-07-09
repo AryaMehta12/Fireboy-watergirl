@@ -2,41 +2,23 @@ const PORT = process.env.PORT || 3000;
 const WebSocket = require('ws');
 const server = new WebSocket.Server({ port: PORT });
 
-let peer;
-socket.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.offer) {
-    peer = new SimplePeer({ initiator: false, trickle: false });
-    peer.signal(data.offer);
-    peer.on('signal', answer => {
-      socket.send(JSON.stringify({ answer }));
+let clients = [];
+
+server.on('connection', (socket) => {
+  clients.push(socket);
+
+  socket.on('message', (msg) => {
+    // Relay the message to all other clients
+    clients.forEach((client) => {
+      if (client !== socket && client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
     });
-    setupPeerEvents();
-  } else if (data.answer && peer) {
-    peer.signal(data.answer);
-  }
-};
-
-// To start a connection (one player clicks "Host", the other "Join"):
-function startConnection(isInitiator) {
-  peer = new SimplePeer({ initiator: isInitiator, trickle: false });
-  peer.on('signal', data => {
-    socket.send(JSON.stringify(isInitiator ? { offer: data } : { answer: data }));
   });
-  setupPeerEvents();
-}
 
-function setupPeerEvents() {
-  peer.on('data', data => {
-    // Handle received player2 position
-    player2 = JSON.parse(data);
+  socket.on('close', () => {
+    clients = clients.filter((client) => client !== socket);
   });
-}
+});
 
-// Send your player1 position to your friend
-function sendPosition() {
-  if (peer && peer.connected) {
-    peer.send(JSON.stringify(player1));
-  }
-}
-setInterval(sendPosition, 50); // Send position 20 times per second
+console.log(`Signaling server running on ws://localhost:${PORT}`);
