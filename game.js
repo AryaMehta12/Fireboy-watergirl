@@ -1,12 +1,12 @@
-console.log('Script loaded');
-console.log('hostBtn:', document.getElementById('hostBtn'));
-console.log('joinBtn:', document.getElementById('joinBtn'));
-
-// --- Setup ---
-const socket = new WebSocket('wss://fireboy-watergirl-production.up.railway.app');
-let peer;
+// --- Unique Client ID ---
+function randomId() {
+  return Math.random().toString(36).substr(2, 9);
+}
+const clientId = randomId();
+let peer = null;
 let isConnected = false;
 let role = null; // 'host' or 'join'
+let peerId = null; // The other client's id
 
 // --- UI Elements ---
 const hostBtn = document.getElementById('hostBtn');
@@ -16,64 +16,112 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // --- Game State ---
-let player1 = { x: 100, y: 500, color: 'red' };   // You
-let player2 = { x: 600, y: 500, color: 'blue' };  // Peer
+let player1 = { x: 100, y: 500, color: 'red' };
+let player2 = { x: 600, y: 500, color: 'blue' };
 
-// --- Host/Join Logic ---
-hostBtn.onclick = () => { 
-  console.log('Host clicked'); 
-  startConnection(true); 
-};
-joinBtn.onclick = () => { 
-  console.log('Join clicked'); 
-  startConnection(false); 
+// --- WebSocket Setup ---
+const socket = new WebSocket('wss://fireboy-watergirl-production.up.railway.app');
+
+socket.onopen = () => {
+  console.log('WebSocket connected');
 };
 
-function startConnection(isInitiator) {
-  role = isInitiator ? 'host' : 'join';
-  peer = new SimplePeer({ initiator: isInitiator, trickle: false });
+hostBtn.onclick = () => {
+  role = 'host';
+  peer = null;
+  peerId = null;
+  isConnected = false;
+  startHost();
+};
 
-  peer.on('signal', data => {
-    socket.send(JSON.stringify({ signal: data }));
-  });
+joinBtn.onclick = () => {
+  role = 'join';
+  peer = null;
+  peerId = null;
+  isConnected = false;
+  startJoin();
+};
 
+function startHost() {
+  // Wait for a joiner to announce themselves
+  console.log('Host clicked');
+}
+
+function startJoin() {
+  // Announce to server that you want to join
+  console.log('Join clicked');
+  socket.send(JSON.stringify({ type: 'join', from: clientId }));
+}
+
+// --- Handle Incoming WebSocket Messages ---
+socket.onmessage = async (event) => {
+  let msg;
+  if (event.data instanceof Blob) {
+    msg = JSON.parse(await event.data.text());
+  } else {
+    msg = JSON.parse(event.data);
+  }
+
+  // Ignore messages not meant for us (if target is set)
+  if (msg.target && msg.target !== clientId) return;
+
+  // Host receives join announcement
+  if (role === 'host' && msg.type === 'join' && !peer) {
+    peerId = msg.from;
+    peer = new SimplePeer({ initiator: true, trickle: false });
+
+    peer.on('signal', data => {
+      socket.send(JSON.stringify({ type: 'signal', from: clientId, target: peerId, signal: data }));
+    });
+
+    setupPeerEvents();
+  }
+
+  // Both handle signaling messages
+  if (msg.type === 'signal' && msg.signal) {
+    if (!peer) {
+      // For joiner: create peer on first signal received
+      peerId = msg.from;
+      peer = new SimplePeer({ initiator: false, trickle: false });
+
+      peer.on('signal', data => {
+        socket.send(JSON.stringify({ type: 'signal', from: clientId, target: peerId, signal: data }));
+      });
+
+      setupPeerEvents();
+    }
+    peer.signal(msg.signal);
+  }
+};
+
+function setupPeerEvents() {
   peer.on('connect', () => {
     isConnected = true;
-    // Send your role to the peer
-    peer.send(JSON.stringify({ type: 'role', role: role }));
     assignColors();
     menu.style.display = 'none';
     canvas.style.display = 'block';
     draw();
+    // Send role to peer
+    peer.send(JSON.stringify({ type: 'role', role }));
   });
 
   peer.on('data', data => {
-    try {
-      let str = data;
-      if (data instanceof ArrayBuffer) {
-        str = new TextDecoder().decode(data);
-      } else if (typeof data !== 'string') {
-        str = data.toString();
-      }
-      const message = JSON.parse(str);
+    let str = data;
+    if (data instanceof ArrayBuffer) str = new TextDecoder().decode(data);
+    else if (typeof data !== 'string') str = data.toString();
+    const message = JSON.parse(str);
 
-      // Handle role assignment
-      if (message.type === 'role') {
-        // Assign opposite role
-        role = message.role === 'host' ? 'join' : 'host';
-        assignColors();
-      } else if (message.x !== undefined && message.y !== undefined) {
-        // Update the other player's position
-        player2.x = message.x;
-        player2.y = message.y;
-      }
-    } catch (e) {
-      console.error('Failed to parse peer data:', e);
+    if (message.type === 'role') {
+      role = message.role === 'host' ? 'join' : 'host';
+      assignColors();
+    } else if (message.x !== undefined && message.y !== undefined) {
+      player2.x = message.x;
+      player2.y = message.y;
     }
   });
 }
 
-// Assign colors based on role
+// --- Assign Colors ---
 function assignColors() {
   if (role === 'host') {
     player1.color = 'red';
@@ -83,24 +131,6 @@ function assignColors() {
     player2.color = 'red';
   }
 }
-
-// --- Signaling via Railway ---
-socket.onmessage = async event => {
-  let message;
-  try {
-    if (event.data instanceof Blob) {
-      const text = await event.data.text();
-      message = JSON.parse(text);
-    } else {
-      message = JSON.parse(event.data);
-    }
-    if (message.signal && peer) {
-      peer.signal(message.signal);
-    }
-  } catch (e) {
-    console.error('Failed to parse signaling message:', e);
-  }
-};
 
 // --- Controls ---
 document.addEventListener('keydown', e => {
@@ -116,7 +146,7 @@ setInterval(() => {
   if (peer && peer.connected) {
     peer.send(JSON.stringify({ x: player1.x, y: player1.y }));
   }
-}, 50); // 20 times per second
+}, 50);
 
 // --- Draw Loop ---
 function draw() {
