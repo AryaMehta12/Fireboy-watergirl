@@ -2,12 +2,7 @@ console.log('Script loaded');
 console.log('hostBtn:', document.getElementById('hostBtn'));
 console.log('joinBtn:', document.getElementById('joinBtn'));
 
-
-
-
 // --- Setup ---
-
-
 const socket = new WebSocket('wss://fireboy-watergirl-production.up.railway.app');
 let peer;
 let isConnected = false;
@@ -24,9 +19,14 @@ let player1 = { x: 100, y: 500, color: 'red' };   // You
 let player2 = { x: 600, y: 500, color: 'blue' };  // Peer
 
 // --- Host/Join Logic ---
-hostBtn.onclick = () => { console.log('Host clicked'); startConnection(true); };
-joinBtn.onclick = () => { console.log('Join clicked'); startConnection(false); };
-
+hostBtn.onclick = () => { 
+  console.log('Host clicked'); 
+  startConnection(true); 
+};
+joinBtn.onclick = () => { 
+  console.log('Join clicked'); 
+  startConnection(false); 
+};
 
 function startConnection(isInitiator) {
   peer = new SimplePeer({ initiator: isInitiator, trickle: false });
@@ -44,16 +44,36 @@ function startConnection(isInitiator) {
 
   peer.on('data', data => {
     try {
-      player2 = JSON.parse(data);
-    } catch (e) {}
+      // SimplePeer gives Buffer, convert to string if needed
+      let str = data;
+      if (data instanceof ArrayBuffer) {
+        str = new TextDecoder().decode(data);
+      } else if (typeof data !== 'string') {
+        str = data.toString();
+      }
+      player2 = JSON.parse(str);
+    } catch (e) {
+      console.error('Failed to parse peer data:', e);
+    }
   });
 }
 
 // --- Signaling via Railway ---
-socket.onmessage = event => {
-  const message = JSON.parse(event.data);
-  if (message.signal && peer) {
-    peer.signal(message.signal);
+// FIX: Handle Blob or string from WebSocket
+socket.onmessage = async event => {
+  let message;
+  try {
+    if (event.data instanceof Blob) {
+      const text = await event.data.text();
+      message = JSON.parse(text);
+    } else {
+      message = JSON.parse(event.data);
+    }
+    if (message.signal && peer) {
+      peer.signal(message.signal);
+    }
+  } catch (e) {
+    console.error('Failed to parse signaling message:', e);
   }
 };
 
