@@ -2,4 +2,7 @@
   "dependencies": {
     "ws": "^8.18.3"
   }
+  "scripts": {
+    "start": "node signaling-server.js"
+  }
 }
