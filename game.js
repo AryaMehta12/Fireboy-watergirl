@@ -6,6 +6,7 @@ console.log('joinBtn:', document.getElementById('joinBtn'));
 const socket = new WebSocket('wss://fireboy-watergirl-production.up.railway.app');
 let peer;
 let isConnected = false;
+let role = null; // 'host' or 'join'
 
 // --- UI Elements ---
 const hostBtn = document.getElementById('hostBtn');
@@ -29,6 +30,7 @@ joinBtn.onclick = () => {
 };
 
 function startConnection(isInitiator) {
+  role = isInitiator ? 'host' : 'join';
   peer = new SimplePeer({ initiator: isInitiator, trickle: false });
 
   peer.on('signal', data => {
@@ -37,6 +39,9 @@ function startConnection(isInitiator) {
 
   peer.on('connect', () => {
     isConnected = true;
+    // Send your role to the peer
+    peer.send(JSON.stringify({ type: 'role', role: role }));
+    assignColors();
     menu.style.display = 'none';
     canvas.style.display = 'block';
     draw();
@@ -44,22 +49,42 @@ function startConnection(isInitiator) {
 
   peer.on('data', data => {
     try {
-      // SimplePeer gives Buffer, convert to string if needed
       let str = data;
       if (data instanceof ArrayBuffer) {
         str = new TextDecoder().decode(data);
       } else if (typeof data !== 'string') {
         str = data.toString();
       }
-      player2 = JSON.parse(str);
+      const message = JSON.parse(str);
+
+      // Handle role assignment
+      if (message.type === 'role') {
+        // Assign opposite role
+        role = message.role === 'host' ? 'join' : 'host';
+        assignColors();
+      } else if (message.x !== undefined && message.y !== undefined) {
+        // Update the other player's position
+        player2.x = message.x;
+        player2.y = message.y;
+      }
     } catch (e) {
       console.error('Failed to parse peer data:', e);
     }
   });
 }
 
+// Assign colors based on role
+function assignColors() {
+  if (role === 'host') {
+    player1.color = 'red';
+    player2.color = 'blue';
+  } else {
+    player1.color = 'blue';
+    player2.color = 'red';
+  }
+}
+
 // --- Signaling via Railway ---
-// FIX: Handle Blob or string from WebSocket
 socket.onmessage = async event => {
   let message;
   try {
@@ -89,7 +114,7 @@ document.addEventListener('keydown', e => {
 // --- Send Position ---
 setInterval(() => {
   if (peer && peer.connected) {
-    peer.send(JSON.stringify(player1));
+    peer.send(JSON.stringify({ x: player1.x, y: player1.y }));
   }
 }, 50); // 20 times per second
 

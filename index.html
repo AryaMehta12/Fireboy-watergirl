@@ -2,15 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fire Boy & Water Girl Multiplayer</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Fireboy & Watergirl</title>
+  <style>
+    #gameCanvas { display: none; border: 1px solid #000; }
+    #menu { display: block; }
+    button { margin: 10px; }
+  </style>
 </head>
 <body>
   <div id="menu">
     <button id="hostBtn">Host</button>
     <button id="joinBtn">Join</button>
   </div>
-  <canvas id="gameCanvas" width="800" height="600" style="display:none;"></canvas>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
   <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
   <script src="game.js"></script>
 </body>
