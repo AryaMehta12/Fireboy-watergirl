@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
-    <meta charset="UTF-8">
-    <title>FireBoy - WaterGirl </title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Fire Boy & Water Girl Multiplayer</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <script src="game.js"></script>
+  <div id="menu">
+    <button id="hostBtn">Host</button>
+    <button id="joinBtn">Join</button>
+  </div>
+  <canvas id="gameCanvas" width="800" height="600" style="display:none;"></canvas>
+  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.1/simplepeer.min.js"></script>
+  <script src="game.js"></script>
 </body>
-
 </html>
